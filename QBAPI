@@ -1,0 +1,415 @@
+function QBAPI ( appURL, tableid, token){
+	 //constructor
+		this.tableid = tableid;
+		this.token = token;
+		this.URL = appURL + '/db/' + tableid;
+		this.queryStr = '';
+		this.fields = {};
+		this.clist ='';
+		this.slist = '';
+		this.options = '';
+		this.queryurl='';
+
+		var cache = [];
+			
+		//record operations list
+		var ops = {
+			'add': this.URL + '?act=API_AddRecord',
+			'editr': this.URL + '?act=API_EditRecord&rid=',//using record id as a record id
+			'editk': this.URL + '?act=API_EditRecord&key=', //primary key other than record id
+			'query': this.URL + '?act=API_DoQuery',
+			'importrecs': this.URL + '?act=API_ImportFromCSV',
+			'getschema': this.URL + '?act=API_GetSchema' + '&apptoken=' + token,
+			'getuserrole': this.URL + '?act=API_GetUserRole' + '&apptoken=' + token,
+			'getuserinfo': this.URL + '?act=API_GetUserInfo' + '&apptoken=' + token,
+			'delete': this.URL + '?act=API_DeleteRecord&rid='// + '&apptoken=' + token
+		};
+		
+		/*privledged members*/
+		
+		this.getFieldbyName = function (fldName){
+			return this.fields[fldName]['id'];
+		};
+		this.getFieldbyID = function (id){
+			return this.fields[id]['label'];
+		};
+		this.getFieldTypebyID = function (id){
+			return this.fields[id]['type'];
+		};
+		this.getFieldHelpbyID = function (id){
+			return this.fields[id]['help'];
+		};
+		this.getQueryops = function(){
+			return ops.query;
+		};
+		
+		this.getSchemaops = function(){
+			return ops.getschema;
+		};
+		
+		this.getEdit_r_ops = function (){
+			return ops.editr;
+		};
+
+		this.getEdit_k_ops = function (){
+			return ops.editk;
+		};
+		
+		this.getAdd_ops = function (){
+			return ops.add;
+		};
+		this.getDelete_ops = function (){
+			return ops.delete;
+		};
+		this.getUserRole_ops = function(){
+			return ops.getuserrole;
+		};
+		this.getUserInfo_ops = function(){
+			return ops.getuserinfo;
+		};
+		this.updateCache = function(recid, fid, value, mode){
+		 //adds or updates an entry in Cache
+		 //mode: u: Edit; n: Add
+		 
+			cache[recid][fid] = value;
+			cache[recid][fid].mode = mode; 
+		};
+		
+		this.getCache = function(recid, fid){
+			//returns value of field in a record stored in cache
+			return cache[recid][fid];
+		};
+		
+		var isInCache = function(recid,  fid){
+			
+			return isUndefined(cache[recid][fid]);
+		};
+		
+		this.qadd = function(fid, cri, value, ao){ 
+			//i.e: ('4', 'CT', 'test', 'AND')
+			//creates query string
+			
+		};
+		
+		this.getQuerystr = function (qstr){
+			return this.queryStr;
+		};
+		
+		this.submit = function(url){
+		
+			return loadXMLDoc(url);
+		};
+		
+
+		
+		this.isNull = function (obj){
+			return obj === null ? true : false;
+		};
+		
+		
+		//PRIVATE MEMBERS
+		
+		try{
+		var loadXMLDoc = function (url){
+			if (window.XMLHttpRequest){
+				xhttp = new XMLHttpRequest();
+			}
+			else{ 
+				// code for IE5 and IE6
+				xhttp = new ActiveXObject("Microsoft.XMLHTTP");
+			}
+			
+			xhttp.open("GET",url,false);
+			xhttp.send();
+			return xhttp.responseXML;
+		};
+		}catch(e){
+			console.log(e);
+		}
+		
+		
+		var streq = function (str1, str2){
+			//check if two strings are equal
+			if( !isNull(str1) && !isNull(str2)){
+				str1.toLowerCase();
+				str2.toLowerCase();
+				var result = str1.localCompare(str2) === 0 ? true : false;
+				return result;
+			}
+			return false;
+		};
+		
+		var isUndefined = function (obj){
+			return (typeof(obj) === 'undefined') ? true : false; 	
+		};
+		
+		var isNumeric = function (obj) {
+			return obj - parseFloat(obj) >= 0;
+		};
+		
+		this.getFields();  //get table schema information
+	
+
+		this.parseQuery_fmt = function(xmlDoc, fld){
+			//parse xml response from structured Query request
+			//Structure: each record id has fields referenced by ids, each fields has value and a lable
+			var result = {};
+			$.each($("record", xmlDoc), 
+				function(){ //sample
+					rid = $(this).attr('rid');
+					 result[rid] = {};
+					$.each($("f", this), 
+						function(){
+							fid = $(this).attr('id');
+							value = $(this).text();
+							result[rid][fid]= {};
+							result[rid][fid]['value'] = value;
+							result[rid][fid]['label'] = fld[Number(fid)]['label'];
+						}
+					);
+				}
+			);
+			return result; //result set as an array
+		};
+
+	}// end class constructor
+	
+	//public (privleged methods)
+	
+	QBAPI.prototype.getFieldID = function(fldName){
+		return this.getFieldbyName(fldName);
+	}
+	QBAPI.prototype.getFieldName= function(id){
+		return this.getFieldbyID(id);
+	}
+	
+	QBAPI.prototype.setQueryString = function(str){
+		//custom explicit query string
+		this.queryStr = str;
+	};
+	
+	QBAPI.prototype.ExecuteQuery = function(clist, slist, options){
+		var url = this.getQueryops()+ '&fmt=structured'+ '&includeRids=1';
+		
+		if( (this.queryStr !== "") ){//(typeof this.queryStr !== 'undefined')
+
+			url += '&query=' + this.queryStr;
+		}
+		if((typeof clist !== 'undefined')){
+			url += '&clist=' +clist;
+		}
+		if((typeof slist !== 'undefined')){
+			url += '&slist=' + slist;
+		}
+		if((typeof options !== 'undefined')){
+			url += "&options=" + options;
+		}
+		url += '&apptoken=' + this.token;
+		//alert(this.fields[16]['label']);
+		this.queryurl = url; // store for next time
+		return this.parseQuery_fmt(this.submit(url), this.fields);
+		
+	};
+	
+	QBAPI.prototype.addRecord = function(list){ 
+		//add a single record
+		//a list of required fields, optional field ids and their values 
+		// "&_fid_7=somevalue&_fid_6=somevalue" ... etc
+		var url = this.getAdd_ops()  + list + "&apptoken=" + this.token;
+		
+		var _result = this.submit(url);
+	
+		var result = {
+			'errcode' : $('errcode', _result).text(),
+			'rid' : $('rid', _result).text(),
+			'errtext': $('errtext', _result).text(),
+			'update_id' : $('update_id', _result).text()
+		};
+		if(result.errcode !== '0'){
+			console.log("An error occured while adding a record: "+ result.errtext);
+		}
+		return result;
+	};
+
+	QBAPI.prototype.deleteRecord = function(recid){
+		url = this.getDelete_ops() + recid + "&apptoken=" + this.token;
+
+		var _result = this.submit(url);
+	
+		var result = {
+			'errcode' : $('errcode', _result).text(),
+			'rid' : $('rid', _result).text(),
+			'errtext': $('errtext', _result).text(),
+			'num_fields_changed' :  $('num_fields_changed', _result).text(),
+			'update_id' : $('update_id', _result).text()
+		};
+		if(result.errcode !== '0'){
+			console.log("An error occured while adding a record: "+ result.errtext);
+		}
+		console.log("Edit record result: " + result);
+		return result;
+	};
+	QBAPI.prototype.editRecordr = function(recid, list){
+		url = this.getEdit_r_ops() + recid + list + "&apptoken=" + this.token;
+
+		var _result = this.submit(url);
+	
+		var result = {
+			'errcode' : $('errcode', _result).text(),
+			'rid' : $('rid', _result).text(),
+			'errtext': $('errtext', _result).text(),
+			'num_fields_changed' :  $('num_fields_changed', _result).text(),
+			'update_id' : $('update_id', _result).text()
+		};
+		if(result.errcode !== '0'){
+			console.log("An error occured while adding a record: "+ result.errtext);
+		}
+		console.log("Edit record result: " + result);
+		return result;
+	};
+	
+	QBAPI.prototype.editRecordk = function(key, list){
+		//Runs API edit record  using Key 
+		url = this.getEdit_k_ops() + key + list + "&apptoken=" + this.token;
+
+		var _result = this.submit(url);
+	
+		var result = {
+			'errcode' : $('errcode', _result).text(),
+			'rid' : $('rid', _result).text(),
+			'errtext': $('errtext', _result).text(),
+			'num_fields_changed' :  $('num_fields_changed', _result).text(),
+			'update_id' : $('update_id', _result).text()
+		};
+		if(result.errcode !== '0'){
+			console.log("An error occured while adding a record: "+ result.errtext);
+		}
+		return result;
+	};
+
+	QBAPI.prototype.setFieldValue = function(recid, fid, value){ 
+		// edits a single record with using a single field
+		
+		fid = "&_fid_" + fid+ "=" + value;
+		url = this.getEdit_k_ops() + "&rid="+recid + fid + "&apptoken=" + this.token;
+
+		var _result = this.submit(url);
+	
+		var result = {
+			'errcode' : $('errcode', _result).text(),
+			'rid' : $('rid', _result).text(),
+			'errtext': $('errtext', _result).text(),
+			'num_fields_changed' :  $('num_fields_changed', _result).text(),
+			'update_id' : $('update_id', _result).text()
+		};
+		if(errcode !== '0'){
+			console.log("An error occured while adding a record: "+ result.errtext);
+		}
+		return result;
+	};
+
+	QBAPI.prototype.getFieldValue = function(recid, fid){
+		var success = false;
+		
+		if (!success){
+
+			return success;
+		}
+
+		return value;
+	};
+
+	QBAPI.prototype.setStatus = function(recid, fid, value){ 
+		//sets the status of a record
+		fid = "&_fid_" + fid+ "=" + value;
+		url = this.getEdit_k_ops() + "&rid="+recid + fid + "&apptoken=" + this.token;
+
+		var _result = this.submit(url);
+	
+		var result = {
+			'errcode' : $('errcode', _result).text(),
+			'rid' : $('rid', _result).text(),
+			'errtext': $('errtext', _result).text(),
+			'num_fields_changed' :  $('num_fields_changed', _result).text(),
+			'update_id' : $('update_id', _result).text()
+		};
+		if(errcode !== '0'){
+			console.log("An error occured while adding a record: "+ result.errtext);
+		}
+
+		return result;
+	};
+
+	QBAPI.prototype.getStatus = function(recid, fid){
+		if(!success) return success;
+		
+		return value;
+	};
+
+	QBAPI.prototype.setState = function(recid, fid, bool){
+		
+	};
+
+	QBAPI.prototype.getState = function(recid, fid){
+		//Record is active or not
+	};
+
+	QBAPI.prototype.recordExist = function(keyid){
+		//whether a key id of parent table is null (0) or not null
+	
+
+
+	};
+	
+	QBAPI.prototype.getFields = function(){
+		
+		var xmlDoc = this.submit(this.getSchemaops());
+		
+		var fields={},
+			fid ='',
+			label = '',
+			help = '';
+			type = '';
+			$.each($("field", xmlDoc), 
+				function(){
+					fid = $(this).attr('id');
+					label = $("label", this).text();
+					help = $("fieldhelp", this).text();
+					type = $(this).attr('field_type');
+ 	
+					fields[label] = {};
+					fields[label]['id'] = fid;
+					fields[label]['help'] = help;
+					fields[label]['type'] = type;
+	
+					fields[fid] = {};
+					fields[fid]['label'] = label;
+					fields[fid]['help'] = help;
+					fields[fid]['type'] = type;
+				}
+			);
+			this.fields = fields;
+			return fields;
+	};
+
+	QBAPI.prototype.getUserRole = function(userid){
+		var url = this.getUserRole_ops();
+		var _result = this.submit(url);
+		var roleid = $('role',_result).attr('id');
+		var rolename = $('name', $('role',_result)).text();
+		var result = {};
+		result.roleid = roleid;
+		result.rolename=rolename;
+
+		return result;
+
+	};
+
+	QBAPI.prototype.getUserInfo = function(){
+	};
+
+	QBAPI.prototype.Refresh = function(){
+		//executes the last query done by ExecuteQuery method
+
+		return this.parseQuery_fmt(this.submit(this.url), this.fields);
+	};
