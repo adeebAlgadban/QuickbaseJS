@@ -6,28 +6,30 @@ var deleteIcon = "https://images.quickbase.com/si/16/202-delete.png",
 debugger;
 //Logic for submitting infor to dependecny tables
 if (typeof (DoSave) === "function") {//if DoSave exists 
-    
+    var clist="", csv="", index=0;
     DoSave = (function(fn){//Override DoDave behavior
         debugger;
             return function(){
             //logic goes here
             if(techServiceList.length>0){
-                var clist = "8.6"; //app ID, techService ID
-                var csv = "";
-                for(var index=0; index < techServiceList.length; index++){
-                    csv = csv + appId + "," +techServiceList[index] +"\n";
+                clist = "8.6"; //app ID, techService ID
+                
+                for(index=0; index < techServiceList.length; index++){
+                    csv = csv + appDependencyDBID + "," +techServiceList[index] +"\n";
                 }
 
                 importRecords(csv,clist, appDependencyDBID);
             }
             if(consumedInterfaceList.length>0){//submit Consumed Interfaces
-                var clist = "6.10"; //app ID, ConsumedInterface ID
-                var csv = "";
-                for(var index=0; index < consumedInterfaceList.length; index++){
-                    csv = csv + appId + "," +consumedInterfaceList[index] +"\n";
+                clist = "6.10.17"; //app ID, ConsumedInterface ID, regulatory
+                csv = "";
+                for(index=0; index < consumedInterfaceList.length; index++){
+                    csv += appConsumedInterfacesDBID + "," + 
+                           consumedInterfaceList[index].id + "," + 
+                           consumedInterfaceList[index].regulatory +"\n";
                 }
 
-                importRecords(csv,clist, appConsumedInterfacesDBID);
+                importRecords(csv, clist, appConsumedInterfacesDBID);
             }
 
             return fn.apply(fn, arguments);
@@ -80,7 +82,7 @@ function addTechService(techServiceId, techServiceName, dbid){
 	}
 }
 
-function addConsumedInterface(consumedInterfaceId, consumedInterfaceName,regulatory){
+function addConsumedInterface(consumedInterfaceId, consumedInterfaceName, regulatory){
 	var htmlRow = "<span style='font-size=105%'><div"+ " id='consumedServiceId_" + consumedInterfaceId +"'>" ;
 		htmlRow +="<b><a href='#'><img src='"+ deleteIcon +"'" + " onClick='removeSelection(\"consumedInterfaceId_" + consumedInterfaceId+ "\""+","+consumedInterfaceId+","+ consumedInterfaceList+"); return false;'" +"></a>" ;
 		htmlRow += consumedInterfaceName+" - " + regulatory;
